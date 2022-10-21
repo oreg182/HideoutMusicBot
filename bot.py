@@ -18,23 +18,7 @@ ffmpeg_options = {
 }
 
 
-async def help_command(message):
-    string = """
-        Songs müssen geadded werden bevor sie gespielt werden können.
-Aktuell können nur yt links hinzugefügt werden.
-Verfügbare Befehle:
-        play SONGNAME
-        add yt LINK
-        schub+Zahl
-        schub-Zahl
-        schub=Zahl
-        pause
-        resume
-        queue
-        skip
-        disconnect
-        """
-    await message.channel.send(string)
+
 
 
 class Client(discord.Client):
@@ -52,19 +36,41 @@ class Client(discord.Client):
         self.selection_msg = None
         self.voice_client = None
         self.queue = []
+        self.prefix = "="
+
+    async def help_command(self, message):
+        string = """
+            Songs müssen geadded werden bevor sie gespielt werden können.
+    Aktuell können nur yt links hinzugefügt werden.
+    Verfügbare Befehle:
+            {}play SONGNAME
+            {}p = play
+            {}add yt LINK
+            {}schub+Zahl
+            {}schub-Zahl
+            {}schub=Zahl
+            {}pause
+            {}resume
+            {}queue
+            {}skip
+            {}disconnect
+            """.format(*[self.prefix for _ in range(11)])
+        await message.channel.send(string)
 
     async def schub_message(self, message):
-        if message.content.startswith("schub+"):
+        if message.content.startswith("{}schub+".format(self.prefix)):
             await self.schubplus(message)
-        elif message.content.startswith("schub-"):
+        elif message.content.startswith("{}schub-".format(self.prefix)):
             await self.schubminus(message)
-        elif message.content.startswith("schub="):
+        elif message.content.startswith("{}schub=".format(self.prefix)):
             await self.schubgleich(message)
+        elif message.content == "{}schub".format(self.prefix):
+            await message.channel.send("Aktueller Schub: {}".format(self.player.volume * 100))
 
     async def schubplus(self, message):
         try:
-            mod = float(message.content.split("=")[1]) / 100
-            if 0 < float(mod) < 1 - self.player.volume:
+            mod = float(message.content.split("+")[1]) / 100
+            if 0 < float(mod) <= 1 - self.player.volume:
                 self.player.volume += float(mod)
                 self.player.volume = round(self.player.volume, 2)
                 self.storage.change_volume(self.queue[0], self.player.volume)
@@ -74,13 +80,17 @@ class Client(discord.Client):
                         self.player.volume * 100))
         except ValueError:
             await message.channel.send(
-                "Aktuelle Lautstärke: {}%. Eingabe muss zwischen 0 und 100-Lautstärke sein.".format(
+                "Aktuelle Lautstärke: {}%. Eingabe muss zwischen 0 und 100-Lautstärke sein. ValueError".format(
+                    self.player.volume * 100))
+        except IndexError:
+            await message.channel.send(
+                "Aktuelle Lautstärke: {}%. Eingabe muss zwischen 0 und 100-Lautstärke sein. IndexError".format(
                     self.player.volume * 100))
 
     async def schubminus(self, message):
         try:
             mod = float(message.content.split("-")[1]) / 100
-            if 0 < float(mod) < self.player.volume:
+            if 0 < float(mod) <= self.player.volume:
                 self.player.volume -= float(mod)
                 self.player.volume = round(self.player.volume, 2)
                 self.storage.change_volume(self.queue[0], self.player.volume)
@@ -89,13 +99,18 @@ class Client(discord.Client):
                     "Aktuelle Lautstärke: {}%. Eingabe muss zwischen 0 und der Lautstärke sein.".format(
                         self.player.volume * 100))
         except ValueError:
-            await message.channel.send("Aktuelle Lautstärke: {}%. Eingabe nach - muss eine Zahl sein.".format(
-                self.player.volume * 100))
+            await message.channel.send(
+                "Aktuelle Lautstärke: {}%. Eingabe nach - muss eine Zahl sein. ValueError".format(
+                    self.player.volume * 100))
+        except IndexError:
+            await message.channel.send(
+                "Aktuelle Lautstärke: {}%. Eingabe nach - muss eine Zahl sein. IndexError".format(
+                    self.player.volume * 100))
 
     async def schubgleich(self, message):
         try:
             mod = float(message.content.split("=")[1]) / 100
-            if 0 < float(mod) < 1:
+            if 0 < float(mod) <= 1:
                 self.player.volume = float(mod)
                 self.player.volume = round(self.player.volume, 2)
                 self.storage.change_volume(self.queue[0], self.player.volume)
@@ -105,11 +120,14 @@ class Client(discord.Client):
                         self.player.volume * 100))
         except ValueError:
             await message.channel.send(
-                "Aktuelle Lautstärke: {}%. Eingabe nach = muss eine Zahl zwischen 0 und 100 sein.".format(
+                "Aktuelle Lautstärke: {}%. Eingabe nach = muss eine Zahl zwischen 0 und 100 sein. ValueError".format(
+                    self.player.volume * 100))
+        except IndexError:
+            await message.channel.send(
+                "Aktuelle Lautstärke: {}%. Eingabe nach = muss eine Zahl zwischen 0 und 100 sein. IndexError".format(
                     self.player.volume * 100))
 
     async def on_message(self, message: Message):
-        print(message)
         if message.author == self.user:
             return
         if self.waiting_for_selection:
@@ -123,26 +141,28 @@ class Client(discord.Client):
                 return
             await self.handle_selection(message, number)
 
-        if message.content.startswith("schub"):
+        if message.content.startswith("{}schub".format(self.prefix)):
             await self.schub_message(message)
-        if message.content.startswith("disconnect"):
+        if message.content.startswith("{}disconnect".format(self.prefix)):
             await self.get_voice_client().disconnect(force=False)
             self.voice_client = None
-        if message.content.startswith("play"):
+        if message.content.startswith("{}play".format(self.prefix)):
             await self.play_command(message)
-        if message.content.startswith("add yt"):
+        if message.content.startswith("{}p".format(self.prefix)):
+            await self.play_command(message)
+        if message.content.startswith("{}add yt".format(self.prefix)):
             await self.add_yt(message)
-        if message.content.startswith("pause"):
+        if message.content.startswith("{}pause".format(self.prefix)):
             self.get_voice_client().pause()
-        if message.content.startswith("resume"):
+        if message.content.startswith("{}resume".format(self.prefix)):
             self.get_voice_client().resume()
-        if message.content.startswith("queue"):
+        if message.content.startswith("{}queue".format(self.prefix)):
             await self.queue_command(message)
-        if message.content.startswith("help"):
-            await help_command(message)
-        if message.content.startswith("skip"):
+        if message.content.startswith("{}help".format(self.prefix)):
+            await self.help_command(message)
+        if message.content.startswith("{}skip".format(self.prefix)):
             client: VoiceClient = self.get_voice_client()
-            client.stop()
+            client.stop()  # calls after_song method
 
     async def queue_command(self, message):
         string = "{} Songs in Queue".format(len(self.queue))

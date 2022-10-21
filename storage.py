@@ -1,6 +1,5 @@
 import asyncio
 import json
-import youtube_dl
 import difflib
 import yt_dlp
 
@@ -20,25 +19,22 @@ ytdl_format_options = {
     'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
 }
 
-ffmpeg_options = {
-    'options': '-vn',
-}
-
-#ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
-
 
 
 class Storage:
     def __init__(self):
-        with open("storage.json", encoding="utf-8") as f:
-            self.data = json.load(f)
+        try:
+            with open("storage.json", encoding="utf-8") as f:
+                self.data = json.load(f)
+        except FileNotFoundError:
+            self.data = {}
 
     def add_yt_song(self, url, textchannel, loop):
         # download
         try:
             data = ytdl.extract_info(url)
-        except youtube_dl.utils.DownloadError:
+        except yt_dlp.utils.DownloadError:
             asyncio.run_coroutine_threadsafe(textchannel.send("Fehler beim Adden"), loop)
             return
         # save
@@ -46,14 +42,15 @@ class Storage:
         filename = ytdl.prepare_filename(data)
         self.data[title] = [filename, 0.5]
         self.save_data()
-        asyncio.run_coroutine_threadsafe(textchannel.send("Added: "+title), loop)
+        asyncio.run_coroutine_threadsafe(textchannel.send("Added: " + title), loop)
 
     def save_data(self):
         with open("storage.json", "w", encoding="utf-8") as f:
             json.dump(self.data, f, indent=4)
 
     def suggest_songs(self, string, suggestions=5):
-        results = sorted([[difflib.SequenceMatcher(None, string.lower(), title.lower()).ratio(), title] for title in self.data.keys()],
+        results = sorted([[difflib.SequenceMatcher(None, string.lower(), title.lower()).ratio(), title] for title in
+                          self.data.keys()],
                          reverse=True)
         print("suggestion results: " + str(results))
         return results[:suggestions]
