@@ -1,6 +1,8 @@
 import asyncio
 import json
 import difflib
+import random
+
 import yt_dlp
 from pathlib import Path
 
@@ -66,6 +68,9 @@ class Storage:
     def change_volume(self, title, new_volume):
         self.data[title][1] = new_volume
         self.save_data()
+
+    def get_random_title(self):
+        return random.choice(list(self.data.keys()))
 
 
 if __name__ == '__main__':

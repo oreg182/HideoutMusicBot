@@ -36,7 +36,8 @@ class Client(discord.Client):
         self.selection_msg = None
         self.voice_client = None
         self.queue = []
-        self.prefix = "="
+        self.prefix = "!"
+        self.autoplay = False
 
     async def help_command(self, message):
         string = """
@@ -146,9 +147,9 @@ class Client(discord.Client):
         if message.content.startswith("{}disconnect".format(self.prefix)):
             await self.get_voice_client().disconnect(force=False)
             self.voice_client = None
-        if message.content.startswith("{}play".format(self.prefix)):
+        if message.content.startswith("{}play ".format(self.prefix)):
             await self.play_command(message)
-        if message.content.startswith("{}p".format(self.prefix)):
+        if message.content.startswith("{}p ".format(self.prefix)):
             await self.play_command(message)
         if message.content.startswith("{}add yt".format(self.prefix)):
             await self.add_yt(message)
@@ -163,6 +164,24 @@ class Client(discord.Client):
         if message.content.startswith("{}skip".format(self.prefix)):
             client: VoiceClient = self.get_voice_client()
             client.stop()  # calls after_song method
+        if message.content.startswith("{}autoplay on".format(self.prefix)):
+            if self.queue:
+                self.autoplay = True
+            else:
+                self.autoplay = True
+                if self.get_voice_client():
+                    client: VoiceClient = self.get_voice_client()
+                    if client.is_playing():
+                        await message.delete()
+                        return
+                    await self.play_song_by_title(self.storage.get_random_title())
+                    await message.delete()
+                else:
+                    self.voice_client = await message.author.voice.channel.connect()
+                    await self.play_song_by_title(self.storage.get_random_title())
+                    await message.delete()
+        if message.content.startswith("{}autoplay off".format(self.prefix)):
+            self.autoplay = False
 
     async def queue_command(self, message):
         string = "{} Songs in Queue".format(len(self.queue))
@@ -202,6 +221,8 @@ class Client(discord.Client):
         if self.queue:
             time.sleep(1)
             asyncio.run_coroutine_threadsafe(self.play_song_by_title(self.queue[0]), self.loop)
+        elif self.autoplay:
+            asyncio.run_coroutine_threadsafe(self.play_song_by_title(self.storage.get_random_title()), self.loop)
         else:
             asyncio.run_coroutine_threadsafe(self.get_voice_client().disconnect(), self.loop)
             self.voice_client = None
