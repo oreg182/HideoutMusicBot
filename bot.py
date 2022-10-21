@@ -67,6 +67,7 @@ class Client(discord.Client):
             if 0 < float(mod) < 1 - self.player.volume:
                 self.player.volume += float(mod)
                 self.player.volume = round(self.player.volume, 2)
+                self.storage.change_volume(self.queue[0], self.player.volume)
             else:
                 await message.channel.send(
                     "Aktuelle Lautstärke: {}%. Eingabe muss zwischen 0 und 100-Lautstärke sein.".format(
@@ -82,6 +83,7 @@ class Client(discord.Client):
             if 0 < float(mod) < self.player.volume:
                 self.player.volume -= float(mod)
                 self.player.volume = round(self.player.volume, 2)
+                self.storage.change_volume(self.queue[0], self.player.volume)
             else:
                 await message.channel.send(
                     "Aktuelle Lautstärke: {}%. Eingabe muss zwischen 0 und der Lautstärke sein.".format(
@@ -96,6 +98,7 @@ class Client(discord.Client):
             if 0 < float(mod) < 1:
                 self.player.volume = float(mod)
                 self.player.volume = round(self.player.volume, 2)
+                self.storage.change_volume(self.queue[0], self.player.volume)
             else:
                 await message.channel.send(
                     "Aktuelle Lautstärke: {}%. Eingabe muss zwischen 0 und 100 sein.".format(
