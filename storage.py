@@ -41,7 +41,7 @@ class Storage:
         except youtube_dl.utils.DownloadError:
             asyncio.run_coroutine_threadsafe(textchannel.send("Fehler beim Adden"), loop)
             return
-        # savestop
+        # save
         title = data["title"]
         filename = ytdl.prepare_filename(data)
         self.data[title] = [filename, 0.5]
@@ -59,10 +59,14 @@ class Storage:
         return results[:suggestions]
 
     def get_filename(self, title):
-        return "music/" + self.data[title][0]
+        return self.data[title][0]
 
     def get_volume(self, title):
         return self.data[title][1]
+
+    def change_volume(self, title, new_volume):
+        self.data[title][1] = new_volume
+        self.save_data()
 
 
 if __name__ == '__main__':
