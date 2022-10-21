@@ -2,6 +2,7 @@ import asyncio
 import json
 import difflib
 import yt_dlp
+from pathlib import Path
 
 yt_dlp.YoutubeDL()
 
@@ -29,6 +30,7 @@ class Storage:
                 self.data = json.load(f)
         except FileNotFoundError:
             self.data = {}
+        Path("./music").mkdir(parents=True, exist_ok=True)
 
     def add_yt_song(self, url, textchannel, loop):
         # download
