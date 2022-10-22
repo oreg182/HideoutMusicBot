@@ -129,6 +129,7 @@ class Client(discord.Client):
                     self.player.volume * 100))
 
     async def on_message(self, message: Message):
+        print(message.author, message.content)
         if message.author == self.user:
             return
         if self.waiting_for_selection:
@@ -172,14 +173,11 @@ class Client(discord.Client):
                 if self.get_voice_client():
                     client: VoiceClient = self.get_voice_client()
                     if client.is_playing():
-                        await message.delete()
                         return
                     await self.play_song_by_title(self.storage.get_random_title())
-                    await message.delete()
                 else:
                     self.voice_client = await message.author.voice.channel.connect()
                     await self.play_song_by_title(self.storage.get_random_title())
-                    await message.delete()
         if message.content.startswith("{}autoplay off".format(self.prefix)):
             self.autoplay = False
 
@@ -191,8 +189,14 @@ class Client(discord.Client):
         await message.channel.send(string)
 
     async def handle_selection(self, message, number):
-        if not (0 <= number <= self.suggestions_limit):
-            return await self.invalid_song_selection(message)
+        if number == 0:
+            await message.delete()
+            await self.cleanup_selection()
+            return
+        if not (0 < number <= self.suggestions_limit):
+            await self.invalid_song_election_number(message)
+            await self.cleanup_selection()
+            return
         else:
             self.waiting_for_selection = False
             title = self.selection[number - 1][1]
@@ -210,22 +214,29 @@ class Client(discord.Client):
             await self.play_song_by_title(title)
             await message.delete()
 
-    async def invalid_song_selection(self, message):
-        await message.channel.send("Ungültige Auswahl")
+    async def cleanup_selection(self):
+        await self.selection_msg.delete()
+        self.selection = None
+        self.waiting_for_selection = False
+
+    async def invalid_song_election_number(self, message):
+        await message.channel.send("Ungültige Zahl")
         self.waiting_for_selection = False
         return
 
     def after_song(self, error):
         print(error) if error else None
-        self.queue.pop(0)
         if self.queue:
-            time.sleep(1)
-            asyncio.run_coroutine_threadsafe(self.play_song_by_title(self.queue[0]), self.loop)
+            self.queue.pop(0)
+            if self.queue:
+                time.sleep(1)
+                asyncio.run_coroutine_threadsafe(self.play_song_by_title(self.queue[0]), self.loop)
+            else:
+                asyncio.run_coroutine_threadsafe(self.get_voice_client().disconnect(), self.loop)
+                self.voice_client = None
         elif self.autoplay:
             asyncio.run_coroutine_threadsafe(self.play_song_by_title(self.storage.get_random_title()), self.loop)
-        else:
-            asyncio.run_coroutine_threadsafe(self.get_voice_client().disconnect(), self.loop)
-            self.voice_client = None
+
 
     async def play_command(self, message):
         try:
@@ -234,7 +245,7 @@ class Client(discord.Client):
             await message.channel.send("Ungültige Eingabe. Siehe help")
             return
         suggestions = self.storage.suggest_songs(songname, self.suggestions_limit)
-        suggestion_string = ""
+        suggestion_string = "Zum Abbrechen 0 eingeben\n"
         for i, s in enumerate(suggestions):
             suggestion_string += str(i + 1) + ": " + s[1] + "\n"
         self.selection_msg = await message.channel.send(suggestion_string)
