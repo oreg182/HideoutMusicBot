@@ -51,10 +51,11 @@ class Client(discord.Client):
     Verfügbare Befehle:
             {}play SONGNAME
             {}p = play
+            {}play yt LINK
             {}add yt LINK
-            {}schub+Zahl
-            {}schub-Zahl
-            {}schub=Zahl
+            {}schub+ZAHL
+            {}schub-ZAHL
+            {}schub=ZAHL
             {}pause
             {}resume
             {}queue
