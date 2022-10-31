@@ -9,8 +9,13 @@ from storage import Storage
 
 
 def get_token():
-    with open("token") as f:
-        return f.read()
+    try:
+        with open("token") as f:
+            return f.read()
+    except FileNotFoundError:
+        print("Token file not found. press enter to end")
+        input()
+        raise FileNotFoundError
 
 
 ffmpeg_options = {
