@@ -20,6 +20,7 @@ ytdl_format_options = {
     'no_warnings': True,
     'default_search': 'error',
     'source_address': '0.0.0.0',  # bind to ipv4 since ipv6 addresses cause issues sometimes
+    "max_filesize": 10000000
 }
 
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
@@ -40,6 +41,10 @@ class Storage:
             data = ytdl.extract_info(url)
         except yt_dlp.utils.DownloadError:
             asyncio.run_coroutine_threadsafe(textchannel.send("Fehler beim Adden"), loop)
+            return 0
+        if data["filesize"] > 10000000:
+            title = data["title"]
+            asyncio.run_coroutine_threadsafe(textchannel.send("Fehler - file zu groß - " + title), loop)
             return
         # save
         title = data["title"]
@@ -47,6 +52,7 @@ class Storage:
         self.data[title] = [filename, 0.5]
         self.save_data()
         asyncio.run_coroutine_threadsafe(textchannel.send("Added: " + title), loop)
+        return title
 
     def save_data(self):
         with open("storage.json", "w", encoding="utf-8") as f:
@@ -77,10 +83,51 @@ class Storage:
     def get_random_title(self):
         return random.choice(list(self.data.keys()))
 
+class Playlists:
+    def __init__(self):
+        self.playlists = {}
+        self.load()
+        print(self.playlists)
+
+    def add_playlist(self, name):
+        self.playlists[name] = Playlist(name)
+
+    def save(self):
+        playlists = {}
+        for key in self.playlists:
+            playlists[key] = self.playlists[key]
+        with open("playlists.json", "w") as f:
+            json.dump(playlists, f, indent=4)
+
+
+    def load(self):
+        with open("playlists.json") as f:
+            jsondata = json.load(f)
+        for key in jsondata:
+            self.playlists[key] = Playlist(key, jsondata[key])
+
+    def add_title_to_playlist(self, playlist, title):
+        self.playlists[playlist].append(title)
+
+
+class Playlist(list):
+    def __init__(self, name, *songs):
+        super(Playlist, self).__init__(*songs)
+        self.played_songs = []
+        self.name = name
+
+    def next_title(self):
+        return self[0]
+
+    def save(self):
+        return str([self.name, self])
+
+
+
 
 if __name__ == '__main__':
-    s = Storage()
-    print(s.suggest_songs("dihct mi fliga"))
+    plists = Playlists()
+    plists.save()
 
     # s.add_yt_song("https://www.youtube.com/watch?v=vdFpZbMKsrM")
     # s.add_yt_song("https://www.youtube.com/watch?v=zJ7lUCxBt9k")

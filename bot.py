@@ -139,7 +139,7 @@ class Client(discord.Client):
                 number = int(message.content)
             except ValueError:
                 await message.channel.send("Ungültige Auswahl")
-                await self.selection_msg.delete()
+                await self.cleanup_selection()
                 return
             await self.handle_selection(message, number)
 
@@ -149,7 +149,10 @@ class Client(discord.Client):
             await self.get_voice_client().disconnect(force=False)
             self.voice_client = None
         if message.content.startswith("{}play ".format(self.prefix)):
-            await self.play_command(message)
+            if message.content.startswith("{}play yt ".format(self.prefix)):
+                await self.add_yt_and_play(message)
+            else:
+                await self.play_command(message)
         if message.content.startswith("{}p ".format(self.prefix)):
             await self.play_command(message)
         if message.content.startswith("{}add yt".format(self.prefix)):
@@ -174,10 +177,10 @@ class Client(discord.Client):
                     client: VoiceClient = self.get_voice_client()
                     if client.is_playing():
                         return
-                    await self.play_song_by_title(self.storage.get_random_title())
+                    await self._play_song_by_title(self.storage.get_random_title())
                 else:
                     self.voice_client = await message.author.voice.channel.connect()
-                    await self.play_song_by_title(self.storage.get_random_title())
+                    await self._play_song_by_title(self.storage.get_random_title())
         if message.content.startswith("{}autoplay off".format(self.prefix)):
             self.autoplay = False
 
@@ -198,21 +201,21 @@ class Client(discord.Client):
             await self.cleanup_selection()
             return
         else:
-            self.waiting_for_selection = False
             title = self.selection[number - 1][1]
-            self.queue.append(title)
-            await self.selection_msg.delete()
+            await self.play_song(message.author.voice.channel, title)
+            await self.cleanup_selection()
+            await message.delete()
+
+    async def play_song(self, voice_channel, title):
+        self.queue.append(title)
         if self.get_voice_client():
             client: VoiceClient = self.get_voice_client()
             if client.is_playing():
-                await message.delete()
                 return
-            await self.play_song_by_title(title)
-            await message.delete()
+            await self._play_song_by_title(title)
         else:
-            self.voice_client = await message.author.voice.channel.connect()
-            await self.play_song_by_title(title)
-            await message.delete()
+            self.voice_client = await voice_channel.connect()
+            await self._play_song_by_title(title)
 
     async def cleanup_selection(self):
         await self.selection_msg.delete()
@@ -230,12 +233,12 @@ class Client(discord.Client):
             self.queue.pop(0)
             if self.queue:
                 time.sleep(1)
-                asyncio.run_coroutine_threadsafe(self.play_song_by_title(self.queue[0]), self.loop)
+                asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.queue[0]), self.loop)
             else:
                 asyncio.run_coroutine_threadsafe(self.get_voice_client().disconnect(), self.loop)
                 self.voice_client = None
         elif self.autoplay:
-            asyncio.run_coroutine_threadsafe(self.play_song_by_title(self.storage.get_random_title()), self.loop)
+            asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.storage.get_random_title()), self.loop)
 
 
     async def play_command(self, message):
@@ -253,7 +256,7 @@ class Client(discord.Client):
         self.selection_channel = message.channel
         self.waiting_for_selection = True
 
-    async def play_song_by_title(self, title):
+    async def _play_song_by_title(self, title):
         filename = self.storage.get_filename(title)
         volume = self.storage.get_volume(title)
         source = discord.FFmpegPCMAudio(filename, **ffmpeg_options)
@@ -263,6 +266,16 @@ class Client(discord.Client):
     async def add_yt(self, message):
         url = message.content.split(" ")[2]
         thread = threading.Thread(target=self.storage.add_yt_song, args=(url, message.channel, self.loop), daemon=True)
+        thread.start()
+
+    def thread_target_add_yt_and_play(self, url, message, loop):
+        title = self.storage.add_yt_song(url, message.channel, self.loop)
+        if title:
+            asyncio.run_coroutine_threadsafe(self.play_song(message.author.voice.channel, title), loop)
+
+    async def add_yt_and_play(self, message):
+        url = message.content.split(" ")[2]
+        thread = threading.Thread(target=self.thread_target_add_yt_and_play, args=(url, message, self.loop), daemon=True)
         thread.start()
 
     def get_voice_client(self):
