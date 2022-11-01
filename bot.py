@@ -43,6 +43,7 @@ class Client(discord.Client):
         self.queue = []
         self.prefix = "!"
         self.autoplay = False
+        self.song_playing = None
 
     async def help_command(self, message):
         string = """
@@ -214,6 +215,7 @@ class Client(discord.Client):
 
     async def play_song(self, voice_channel, title):
         self.queue.append(title)
+        self.song_playing = title
         if self.get_voice_client():
             client: VoiceClient = self.get_voice_client()
             if client.is_playing():
@@ -236,7 +238,8 @@ class Client(discord.Client):
     def after_song(self, error):
         print(error) if error else None
         if self.queue:
-            self.queue.pop(0)
+            if self.queue[0] == self.song_playing:
+                self.queue.pop(0)
             if self.queue:
                 time.sleep(1)
                 asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.queue[0]), self.loop)
@@ -245,6 +248,9 @@ class Client(discord.Client):
                 self.voice_client = None
         elif self.autoplay:
             asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.storage.get_random_title()), self.loop)
+        else:
+            asyncio.run_coroutine_threadsafe(self.get_voice_client().disconnect(force=False), self.loop)
+            self.voice_client = None
 
 
     async def play_command(self, message):
