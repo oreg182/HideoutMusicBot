@@ -215,7 +215,6 @@ class Client(discord.Client):
 
     async def play_song(self, voice_channel, title):
         self.queue.append(title)
-        self.song_playing = title
         if self.get_voice_client():
             client: VoiceClient = self.get_voice_client()
             if client.is_playing():
@@ -269,6 +268,7 @@ class Client(discord.Client):
         self.waiting_for_selection = True
 
     async def _play_song_by_title(self, title):
+        self.song_playing = title
         filename = self.storage.get_filename(title)
         volume = self.storage.get_volume(title)
         source = discord.FFmpegPCMAudio(filename, **ffmpeg_options)
