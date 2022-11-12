@@ -192,6 +192,7 @@ class Client(discord.Client):
             self.autoplay = False
 
     async def queue_command(self, message):
+        # TODO autoplay interactions
         string = "{} Songs in Queue".format(len(self.queue))
         string += "\n(PLAYING) " + self.queue[0]
         for title in self.queue[1:]:
@@ -242,6 +243,8 @@ class Client(discord.Client):
             if self.queue:
                 time.sleep(1)
                 asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.queue[0]), self.loop)
+            elif self.autoplay:
+                asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.storage.get_random_title()), self.loop)
             else:
                 asyncio.run_coroutine_threadsafe(self.get_voice_client().disconnect(), self.loop)
                 self.voice_client = None
