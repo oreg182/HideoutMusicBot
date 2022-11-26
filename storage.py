@@ -38,7 +38,7 @@ class Storage:
 
     def next_shuffle_title(self):
         if not self.shuffle_list:
-            self.shuffle_list = self.data
+            self.shuffle_list = self.data.copy()
         title = random.choice(list(self.shuffle_list.keys()))
         self.shuffle_list.pop(title)
         return title
