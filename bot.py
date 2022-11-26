@@ -184,10 +184,10 @@ class Client(discord.Client):
                     client: VoiceClient = self.get_voice_client()
                     if client.is_playing():
                         return
-                    await self._play_song_by_title(self.storage.get_random_title())
+                    await self._play_song_by_title(self.storage.next_shuffle_title())
                 else:
                     self.voice_client = await message.author.voice.channel.connect()
-                    await self._play_song_by_title(self.storage.get_random_title())
+                    await self._play_song_by_title(self.storage.next_shuffle_title())
         if message.content.startswith("{}autoplay off".format(self.prefix)):
             self.autoplay = False
 
@@ -244,12 +244,12 @@ class Client(discord.Client):
                 time.sleep(1)
                 asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.queue[0]), self.loop)
             elif self.autoplay:
-                asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.storage.get_random_title()), self.loop)
+                asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.storage.next_shuffle_title()), self.loop)
             else:
                 asyncio.run_coroutine_threadsafe(self.get_voice_client().disconnect(), self.loop)
                 self.voice_client = None
         elif self.autoplay:
-            asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.storage.get_random_title()), self.loop)
+            asyncio.run_coroutine_threadsafe(self._play_song_by_title(self.storage.next_shuffle_title()), self.loop)
         else:
             asyncio.run_coroutine_threadsafe(self.get_voice_client().disconnect(force=False), self.loop)
             self.voice_client = None

@@ -34,6 +34,14 @@ class Storage:
         except FileNotFoundError:
             self.data = {}
         Path("./music").mkdir(parents=True, exist_ok=True)
+        self.shuffle_list = {}
+
+    def next_shuffle_title(self):
+        if not self.shuffle_list:
+            self.shuffle_list = self.data
+        title = random.choice(list(self.shuffle_list.keys()))
+        self.shuffle_list.pop(title)
+        return title
 
     def add_yt_song(self, url, textchannel, loop):
         # download
@@ -59,15 +67,9 @@ class Storage:
             json.dump(self.data, f, indent=4)
 
     def suggest_songs(self, string, suggestions=5):
-        l = [[difflib.SequenceMatcher(None, string.lower(), title.lower()).ratio(), title] for title in
-                          self.data.keys()]
-        print(l)
         matching_blocks = [[max(match.size for match in difflib.SequenceMatcher(None, string.lower(), title.lower()).get_matching_blocks()), title] for title in
                           self.data.keys()]
         sorted_by_blocks = sorted(matching_blocks, reverse=True)
-        print(sorted_by_blocks)
-        results = sorted(l, reverse=True)
-        print("suggestion results: " + str(results))
         return sorted_by_blocks[:suggestions]
 
     def get_filename(self, title):
